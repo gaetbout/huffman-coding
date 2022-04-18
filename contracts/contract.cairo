@@ -2,7 +2,6 @@
 #
 # Imports
 #
-
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.alloc import alloc
 #
@@ -94,26 +93,77 @@ end
 # En vrai faut faire une méthode increment qui return le nvel array et length
 #   Si il trouve le truc il inc
 #   Si il trouve pas il ajoute un objet stou
-# TODO Remove this view
+
 @view
-func contains{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-        arr_len : felt, arr : CharacterOccurence*, characterToSearchFor : felt) -> (
-        contains : felt):
-    if arr_len == 0:
-        return (0)
-    end
-    return contains_recursive(arr_len, arr, character, 0)
+func do_it{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
+        arr_len : felt, arr : CharacterOccurence*):
+    alloc_locals
+    let (arr_len, arr) = string_to_compress()
+    let (local arr_character : CharacterOccurence*) = alloc()
+
+    return do_it_recursive(arr_len, arr, 0, arr_character, 0)
 end
 
-func contains_recursive{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-        arr_len : felt, arr : CharacterOccurence*, characterToSearchFor : felt,
-        current_index : felt) -> (contains : felt):
-    if current_index == arr_len:
+func do_it_recursive{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+        arr_character_len : felt, arr_character : felt*, arr_occurences_len : felt,
+        arr_occurences : CharacterOccurence*, current_index : felt) -> (
+        arr_len : felt, arr : CharacterOccurence*):
+    if arr_character_len == current_index:
+        return (arr_occurences_len, arr_occurences)
+    end
+    let current_caracter = arr_character[current_index]
+    let (found) = check_character_already_in(arr_occurences_len, arr_occurences, current_caracter)
+    if found == 1:
+        return do_it_recursive(
+            arr_character_len,
+            arr_character,
+            arr_occurences_len,
+            arr_occurences,
+            current_index + 1)
+    end
+    let (nb_occurences) = count_occurences_of(arr_character_len, arr_character, current_caracter)
+    assert arr_occurences[arr_occurences_len] = CharacterOccurence(current_caracter, nb_occurences)
+    return do_it_recursive(
+        arr_character_len,
+        arr_character,
+        arr_occurences_len + 1,
+        arr_occurences,
+        current_index + 1)
+end
+
+func check_character_already_in{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+        arr_len : felt, arr : CharacterOccurence*, character : felt) -> (found : felt):
+    return check_character_already_in_recursive(arr_len, arr, character, 0)
+end
+
+func check_character_already_in_recursive{
+        syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+        arr_len : felt, arr : CharacterOccurence*, character : felt, current_index : felt) -> (
+        found : felt):
+    if arr_len == current_index:
         return (0)
     end
-    if arr[current_index].character == characterToSearchFor:
+    if arr[current_index].character == character:
         return (1)
     end
-    contains_recursive(arr_len, arr, characterToSearchFor, current_index + 1)
-    return (0)
+    return check_character_already_in_recursive(arr_len, arr, character, current_index + 1)
+end
+
+func count_occurences_of{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+        arr_len : felt, arr : felt*, character : felt) -> (nb_occurences : felt):
+    return count_occurences_of_recursive(arr_len, arr, character, 0, 0)
+end
+
+func count_occurences_of_recursive{
+        syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+        arr_len : felt, arr : felt*, character : felt, current_count : felt,
+        current_index : felt) -> (nb_occurences : felt):
+    if arr_len == current_index:
+        return (current_count)
+    end
+    if arr[current_index] == character:
+        return count_occurences_of_recursive(
+            arr_len, arr, character, current_count + 1, current_index + 1)
+    end
+    return count_occurences_of_recursive(arr_len, arr, character, current_count, current_index + 1)
 end
