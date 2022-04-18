@@ -73,38 +73,25 @@ func string_to_compress{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_
 end
 
 @view
+func do_it{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
+        arr_len : felt, arr : CharacterOccurence*):
+    let (arr_len, arr) = string_to_compress()
+    return generate_list_of_occurences(arr_len, arr)
+end
+
+#
+# Generating list of occurences
+#
+
 func generate_list_of_occurences{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-        arr_len : felt, arr : felt*) -> ():
-    generate_list_of_occurences_recursive(arr_len, arr, 0)
-    return ()
+        arr_len : felt, arr : felt*) -> (arr_len : felt, arr : CharacterOccurence*):
+    alloc_locals
+    let (local arr_character : CharacterOccurence*) = alloc()
+    return generate_list_of_occurences_recursive(arr_len, arr, 0, arr_character, 0)
 end
 
 func generate_list_of_occurences_recursive{
         syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-        arr_len : felt, arr : felt*, current_index : felt) -> ():
-    return ()
-end
-
-# let (local arr : CharacterOccurence*) = alloc()
-# assert arr[0] = CharacterOccurence('T', 1)
-# assert arr[1] = CharacterOccurence('g', 1)
-# assert arr[2] = CharacterOccurence('h', 1)
-
-# En vrai faut faire une méthode increment qui return le nvel array et length
-#   Si il trouve le truc il inc
-#   Si il trouve pas il ajoute un objet stou
-
-@view
-func do_it{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
-        arr_len : felt, arr : CharacterOccurence*):
-    alloc_locals
-    let (arr_len, arr) = string_to_compress()
-    let (local arr_character : CharacterOccurence*) = alloc()
-
-    return do_it_recursive(arr_len, arr, 0, arr_character, 0)
-end
-
-func do_it_recursive{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
         arr_character_len : felt, arr_character : felt*, arr_occurences_len : felt,
         arr_occurences : CharacterOccurence*, current_index : felt) -> (
         arr_len : felt, arr : CharacterOccurence*):
@@ -114,7 +101,7 @@ func do_it_recursive{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
     let current_caracter = arr_character[current_index]
     let (found) = check_character_already_in(arr_occurences_len, arr_occurences, current_caracter)
     if found == 1:
-        return do_it_recursive(
+        return generate_list_of_occurences_recursive(
             arr_character_len,
             arr_character,
             arr_occurences_len,
@@ -123,7 +110,7 @@ func do_it_recursive{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
     end
     let (nb_occurences) = count_occurences_of(arr_character_len, arr_character, current_caracter)
     assert arr_occurences[arr_occurences_len] = CharacterOccurence(current_caracter, nb_occurences)
-    return do_it_recursive(
+    return generate_list_of_occurences_recursive(
         arr_character_len,
         arr_character,
         arr_occurences_len + 1,
