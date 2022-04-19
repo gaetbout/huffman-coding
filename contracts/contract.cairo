@@ -14,6 +14,19 @@ struct CharacterOccurence:
     # Its number of occurences
     member occurences : felt
 end
+
+struct Node:
+    member weight : felt
+    member arr_len : felt
+    member arr : NodeTail*
+end
+
+struct NodeTail:
+    member character : felt
+    member arr_len : felt
+    member arr : felt*
+end
+
 #
 # Getters
 #
@@ -76,12 +89,20 @@ end
 
 @view
 func do_it{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
-    arr_len : felt, arr : CharacterOccurence*
+    weight : felt, arr_len : felt, character : felt, arr_tmp_len : felt, arr_tmp : felt*
 ):
+    alloc_locals
     let (arr_len, arr) = string_to_compress()
     let (arr_occurences_len, arr_occurences) = generate_list_of_occurences(arr_len, arr)
     let (arr_sorted_len, arr_sorted) = sort_occurences_array(arr_occurences_len, arr_occurences)
-    return (arr_sorted_len, arr_sorted)
+    let (final_node) = get_node(arr_sorted_len, arr_sorted)
+    return (
+        final_node.weight,
+        final_node.arr_len,
+        final_node.arr[0].character,
+        final_node.arr[0].arr_len,
+        final_node.arr[0].arr,
+    )
 end
 
 #
@@ -251,7 +272,7 @@ func create_new_array_without_recursive{
     if arr_len == current_index:
         return (arr_new_len, arr_new)
     end
-    # TODO Compare structure?
+    # Since the character are supposetly unique we can compare them on that
     if arr[current_index].character == item_to_remove.character:
         return create_new_array_without_recursive(
             arr_len, arr, arr_new_len, arr_new, item_to_remove, current_index + 1
@@ -261,4 +282,38 @@ func create_new_array_without_recursive{
     return create_new_array_without_recursive(
         arr_len, arr, arr_new_len + 1, arr_new, item_to_remove, current_index + 1
     )
+end
+
+func get_node{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    arr_len : felt, arr : CharacterOccurence*
+) -> (final_node : Node):
+    let (arr_nodes_len, arr_nodes) = transform_all_to_node(arr_len, arr)
+    return (arr_nodes[0])
+end
+func transform_all_to_node{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    arr_len : felt, arr : CharacterOccurence*
+) -> (nodes_len : felt, nodes : Node*):
+    alloc_locals
+    let (local current_nodes : Node*) = alloc()
+    return transform_all_to_node_recursive(arr_len, arr, current_nodes, 0)
+end
+func transform_all_to_node_recursive{
+    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
+}(arr_len : felt, arr : CharacterOccurence*, current_nodes : Node*, current_index : felt) -> (
+    nodes_len : felt, nodes : Node*
+):
+    alloc_locals
+    if arr_len == current_index:
+        return (current_index, current_nodes)
+    end
+
+    let (local tail : felt*) = alloc()
+    let charac = arr[current_index].character
+    let current_node_tail = NodeTail(charac, 0, tail)
+    let (local current_tail : NodeTail*) = alloc()
+    assert current_tail[0] = current_node_tail
+    let current_node = Node(arr[current_index].occurences, 1, current_tail)
+
+    assert current_nodes[current_index] = current_node
+    return transform_all_to_node_recursive(arr_len, arr, current_nodes, current_index + 1)
 end
